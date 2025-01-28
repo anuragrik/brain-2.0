@@ -17,7 +17,7 @@ A minimalist task management app for organizing thoughts and daily tasks.
 
 ## Installation
 
-1. Clone the repository (git clone https://github.com/yourusername/brain2.0.git)
+1. Clone the repository (git clone https://github.com/anuragrik/brain2.0.git)
 2. Install dependencies (npm install)
 3. Start the development server (npm run dev)
 
