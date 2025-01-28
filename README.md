@@ -24,7 +24,11 @@ A minimalist task management app for organizing thoughts and daily tasks.
 ### Usage
 
 Add Task: Type in the input field and click ➕ or press Enter
+
 Delete Task: Hover over a task and click the ❌ icon
+
 Reorder Tasks: Drag using the grip icon (⋮⋮) in Brain Dump column
+
 Prioritize Tasks: Drag tasks to the Today's column to number them
+
 Persistent Storage: Data saves automatically to local storage
