@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Plus, X, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Generate unique IDs using crypto if available, fallback to Date.now()
 const generateId = () => {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
     return crypto.randomUUID();
@@ -37,7 +36,6 @@ const TaskManagementApp = () => {
     column: string;
   } | null>(null);
 
-  // Initialize from localStorage
   useEffect(() => {
     const loadData = () => ({
       [COLUMNS.BRAIN_DUMP]: loadFromLocalStorage(COLUMNS.BRAIN_DUMP) || [],
@@ -46,7 +44,6 @@ const TaskManagementApp = () => {
     setColumns(loadData());
   }, []);
 
-  // Persist to localStorage
   useEffect(() => {
     saveToLocalStorage(COLUMNS.BRAIN_DUMP, columns[COLUMNS.BRAIN_DUMP]);
     saveToLocalStorage(COLUMNS.TODO_TODAY, columns[COLUMNS.TODO_TODAY]);
@@ -81,20 +78,17 @@ const TaskManagementApp = () => {
     index: number
   ) => {
     e.preventDefault();
-    if (!draggingTask) return;
+    if (!draggingTask || draggingTask.column !== column) return;
 
     const items = [...columns[column]];
     const draggedItemIndex = items.findIndex(
       (item) => item.id === draggingTask.id
     );
 
-    // If dragging within the same column
-    if (draggingTask.column === column) {
-      if (draggedItemIndex !== index) {
-        const [removed] = items.splice(draggedItemIndex, 1);
-        items.splice(index, 0, removed);
-        setColumns((prev) => ({ ...prev, [column]: items }));
-      }
+    if (draggedItemIndex !== index) {
+      const [removed] = items.splice(draggedItemIndex, 1);
+      items.splice(index, 0, removed);
+      setColumns((prev) => ({ ...prev, [column]: items }));
     }
   };
 
@@ -102,7 +96,29 @@ const TaskManagementApp = () => {
     e.preventDefault();
     if (!draggingTask) return;
 
-    // If dropping in a different column
+    const taskListContainer = document.querySelector(
+      `[data-column="${column}"]`
+    ) as HTMLElement;
+    if (!taskListContainer) return;
+
+    const tasksElements = Array.from(
+      taskListContainer.querySelectorAll<HTMLElement>("[data-task]")
+    );
+    const dragY = e.clientY;
+    const containerRect = taskListContainer.getBoundingClientRect();
+    const relativeY = dragY - containerRect.top;
+
+    let targetIndex = tasksElements.length;
+    for (let i = 0; i < tasksElements.length; i++) {
+      const taskRect = tasksElements[i].getBoundingClientRect();
+      const taskMiddle =
+        (taskRect.top + taskRect.bottom) / 2 - containerRect.top;
+      if (relativeY < taskMiddle) {
+        targetIndex = i;
+        break;
+      }
+    }
+
     if (draggingTask.column !== column) {
       setColumns((prev) => {
         const sourceColumn = [...prev[draggingTask.column]];
@@ -114,7 +130,7 @@ const TaskManagementApp = () => {
         if (taskIndex === -1) return prev;
 
         const [movedTask] = sourceColumn.splice(taskIndex, 1);
-        targetColumn.push(movedTask);
+        targetColumn.splice(targetIndex, 0, movedTask);
 
         return {
           ...prev,
@@ -222,15 +238,43 @@ const TaskColumn = ({
         </Button>
       </form>
 
-      <div className="space-y-1.5">
+      <div
+        data-column={column}
+        className="space-y-1.5"
+        onDragOver={(e) => {
+          e.preventDefault();
+          if (!draggingTask) return;
+
+          const taskListContainer = e.currentTarget as HTMLElement;
+          const tasksElements = Array.from(
+            taskListContainer.querySelectorAll<HTMLElement>("[data-task]")
+          );
+          const dragY = e.clientY;
+          const containerRect = taskListContainer.getBoundingClientRect();
+          const relativeY = dragY - containerRect.top;
+
+          let targetIndex = tasksElements.length;
+          for (let i = 0; i < tasksElements.length; i++) {
+            const taskRect = tasksElements[i].getBoundingClientRect();
+            const taskMiddle =
+              (taskRect.top + taskRect.bottom) / 2 - containerRect.top;
+            if (relativeY < taskMiddle) {
+              targetIndex = i;
+              break;
+            }
+          }
+
+          if (draggingTask.column === column) {
+            onDragOver(e, column, targetIndex);
+          }
+        }}
+      >
         {tasks.map((task, index) => (
           <TaskItem
             key={task.id}
             task={task}
             column={column}
-            index={index}
             onDragStart={onDragStart}
-            onDragOver={onDragOver}
             onDelete={onDelete}
             isDragging={draggingTask?.id === task.id}
           />
@@ -248,24 +292,20 @@ const TaskColumn = ({
 const TaskItem = ({
   task,
   column,
-  index,
   onDragStart,
-  onDragOver,
   onDelete,
   isDragging,
 }: {
   task: Task;
   column: string;
-  index: number;
   onDragStart: (taskId: string, column: string) => void;
-  onDragOver: (e: React.DragEvent, column: string, index: number) => void;
   onDelete: (taskId: string, column: string) => void;
   isDragging: boolean;
 }) => (
   <div
+    data-task
     draggable
     onDragStart={() => onDragStart(task.id, column)}
-    onDragOver={(e) => onDragOver(e, column, index)}
     className={cn(
       "group flex items-center p-2.5 bg-white border border-slate-200 rounded-md",
       "cursor-grab active:cursor-grabbing shadow-xs hover:shadow-sm",
@@ -284,7 +324,6 @@ const TaskItem = ({
   </div>
 );
 
-// LocalStorage helpers with safe access
 const saveToLocalStorage = (key: string, data: Task[]) => {
   if (typeof window !== "undefined") {
     localStorage.setItem(key, JSON.stringify(data));
