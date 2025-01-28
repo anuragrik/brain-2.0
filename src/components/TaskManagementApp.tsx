@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Plus, X, GripVertical } from "lucide-react";
@@ -144,14 +144,14 @@ const TaskManagementApp = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
-      <h1 className="text-3xl font-light text-center mb-8 text-slate-700">
-        Task Dump
+    <div className="min-h-screen bg-white p-4 md:p-8">
+      <h1 className="text-2xl font-light text-center mb-12 text-gray-800">
+        brain 2.0
       </h1>
 
-      <div className="grid md:grid-cols-2 gap-5 max-w-6xl mx-auto">
+      <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
         <TaskColumn
-          title="Brain Dump"
+          title="thoughts"
           column={COLUMNS.BRAIN_DUMP}
           tasks={columns[COLUMNS.BRAIN_DUMP]}
           inputValue={inputValues[COLUMNS.BRAIN_DUMP]}
@@ -167,7 +167,7 @@ const TaskManagementApp = () => {
         />
 
         <TaskColumn
-          title="To Do Today"
+          title="today's to do"
           column={COLUMNS.TODO_TODAY}
           tasks={columns[COLUMNS.TODO_TODAY]}
           inputValue={inputValues[COLUMNS.TODO_TODAY]}
@@ -211,28 +211,27 @@ const TaskColumn = ({
   onDelete: (taskId: string, column: string) => void;
   draggingTask: { id: string; column: string } | null;
 }) => (
-  <Card
-    className="bg-white shadow-sm rounded-lg border border-slate-200"
+  <div
+    className="bg-gray-50/50 rounded-xl p-6 h-[70vh] flex flex-col"
     onDrop={(e) => onDrop(e, column)}
     onDragOver={(e) => e.preventDefault()}
   >
-    <CardHeader className="pb-2">
-      <CardTitle className="text-base font-medium text-slate-600">
-        {title}
-      </CardTitle>
-    </CardHeader>
-    <CardContent className="space-y-3 min-h-[500px]">
-      <form onSubmit={onSubmit} className="flex gap-2 mb-3">
+    <h2 className="text-sm font-medium text-gray-500 mb-6 tracking-wide uppercase">
+      {title}
+    </h2>
+
+    <div className="flex flex-col flex-1">
+      <form onSubmit={onSubmit} className="flex gap-2 mb-4">
         <Input
           value={inputValue}
           onChange={(e) => onInputChange(e.target.value)}
-          placeholder={`Add to ${title.toLowerCase()}...`}
-          className="rounded-md bg-white border-slate-200 focus:border-slate-300"
+          placeholder="Add something..."
+          className="rounded-lg bg-white/80 border-0 shadow-sm placeholder:text-gray-300 focus-visible:ring-1 focus-visible:ring-gray-200"
         />
         <Button
           type="submit"
           size="icon"
-          className="rounded-md bg-slate-800 text-white hover:bg-slate-700"
+          className="rounded-lg bg-gray-900 text-white hover:bg-gray-800 shadow-sm"
         >
           <Plus className="h-4 w-4" />
         </Button>
@@ -240,7 +239,7 @@ const TaskColumn = ({
 
       <div
         data-column={column}
-        className="space-y-1.5"
+        className="space-y-2 flex-1 overflow-y-auto"
         onDragOver={(e) => {
           e.preventDefault();
           if (!draggingTask) return;
@@ -251,9 +250,23 @@ const TaskColumn = ({
           );
           const dragY = e.clientY;
           const containerRect = taskListContainer.getBoundingClientRect();
-          const relativeY = dragY - containerRect.top;
 
+          // Auto-scroll logic
+          const scrollThreshold = 50;
+          const scrollSpeed = 10;
+          const deltaTop = dragY - containerRect.top;
+          const deltaBottom = containerRect.bottom - dragY;
+
+          if (deltaTop < scrollThreshold) {
+            taskListContainer.scrollTop -= scrollSpeed;
+          } else if (deltaBottom < scrollThreshold) {
+            taskListContainer.scrollTop += scrollSpeed;
+          }
+
+          // Calculate target index
+          const relativeY = dragY - containerRect.top;
           let targetIndex = tasksElements.length;
+
           for (let i = 0; i < tasksElements.length; i++) {
             const taskRect = tasksElements[i].getBoundingClientRect();
             const taskMiddle =
@@ -274,55 +287,71 @@ const TaskColumn = ({
             key={task.id}
             task={task}
             column={column}
+            index={index}
             onDragStart={onDragStart}
             onDelete={onDelete}
             isDragging={draggingTask?.id === task.id}
           />
         ))}
         {tasks.length === 0 && (
-          <div className="text-slate-400 text-sm py-3 text-center">
+          <div className="text-gray-300 text-sm py-8 text-center italic">
             No tasks yet
           </div>
         )}
       </div>
-    </CardContent>
-  </Card>
+    </div>
+  </div>
 );
 
 const TaskItem = ({
   task,
   column,
+  index,
   onDragStart,
   onDelete,
   isDragging,
 }: {
   task: Task;
   column: string;
+  index: number;
   onDragStart: (taskId: string, column: string) => void;
   onDelete: (taskId: string, column: string) => void;
   isDragging: boolean;
-}) => (
-  <div
-    data-task
-    draggable
-    onDragStart={() => onDragStart(task.id, column)}
-    className={cn(
-      "group flex items-center p-2.5 bg-white border border-slate-200 rounded-md",
-      "cursor-grab active:cursor-grabbing shadow-xs hover:shadow-sm",
-      "transition-all duration-150",
-      isDragging && "opacity-50"
-    )}
-  >
-    <GripVertical className="h-4 w-4 mr-2 text-slate-400 group-hover:text-slate-500" />
-    <span className="flex-1 text-slate-600 text-sm">{task.text}</span>
-    <button
-      onClick={() => onDelete(task.id, column)}
-      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 -mr-1 hover:bg-slate-100 rounded"
+}) => {
+  const isTodoColumn = column === COLUMNS.TODO_TODAY;
+
+  return (
+    <div
+      data-task
+      draggable
+      onDragStart={() => onDragStart(task.id, column)}
+      className={cn(
+        "group flex items-center p-3 bg-white/80 rounded-lg",
+        "cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md",
+        "transition-all duration-200 ease-in-out",
+        "border border-transparent hover:border-gray-100",
+        isDragging && "opacity-50"
+      )}
     >
-      <X className="h-4 w-4 text-slate-400 hover:text-slate-500" />
-    </button>
-  </div>
-);
+      {isTodoColumn ? (
+        <span className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 text-xs font-medium mr-3">
+          {index + 1}
+        </span>
+      ) : (
+        <GripVertical className="h-4 w-4 mr-3 text-gray-200 group-hover:text-gray-400" />
+      )}
+      <span className="flex-1 text-gray-600 text-sm font-light">
+        {task.text}
+      </span>
+      <button
+        onClick={() => onDelete(task.id, column)}
+        className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-gray-50 rounded-md"
+      >
+        <X className="h-3.5 w-3.5 text-gray-300 hover:text-gray-400" />
+      </button>
+    </div>
+  );
+};
 
 const saveToLocalStorage = (key: string, data: Task[]) => {
   if (typeof window !== "undefined") {
