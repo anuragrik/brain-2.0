@@ -21,7 +21,7 @@ A minimalist task management app for organizing thoughts and daily tasks.
 2. Install dependencies (npm install)
 3. Start the development server (npm run dev)
 
-### Usage
+## Usage
 
 Add Task: Type in the input field and click ➕ or press Enter
 
